@@ -1,26 +1,27 @@
-use std::fs::File;
+use std::{env, fs::File};
 
 use egui::Vec2;
 use egui_memory_editor::{option_data::MemoryEditorOptions, MemoryEditor};
 use memmap::Mmap;
 
 fn main() {
-    let file = File::open("/tmp/gsnes.wram").unwrap();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        return;
+    }
+    let filename = &args[1];
+
+    let file = File::open(filename).unwrap();
     let mmap = unsafe { Mmap::map(&file).unwrap() };
 
     let mut options = eframe::NativeOptions::default();
     options.initial_window_size = Some(Vec2::new(932., 600.));
 
-    eframe::run_native(
-        "Mmap Viewer",
-        options,
-        Box::new(|_cc| Box::new(App::new(mmap))),
-    );
+    eframe::run_native(filename, options, Box::new(|_cc| Box::new(App::new(mmap))));
 }
 
 struct App {
     mem_editor: MemoryEditor,
-    options: MemoryEditorOptions,
     buf: Mmap,
 }
 
@@ -30,15 +31,12 @@ impl App {
         options.column_count = 32;
         options.is_options_collapsed = true;
 
-        let size = mmap.len();
-
         let mem_editor = MemoryEditor::new()
             .with_options(options.clone())
-            .with_address_range("All", 0..size);
+            .with_address_range("All", 0..mmap.len());
 
         Self {
             mem_editor: mem_editor,
-            options: options,
             buf: mmap,
         }
     }
